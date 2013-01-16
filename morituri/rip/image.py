@@ -22,9 +22,11 @@
 
 import os
 
-from morituri.common import logcommand, accurip, program, encode, renamer
+from morituri.common import accurip, directory, encode
+from morituri.common import logcommand, program, renamer
 from morituri.image import image
 from morituri.result import result
+from morituri.rip import common as rcommon
 
 from morituri.extern.task import task
 
@@ -152,6 +154,7 @@ class Rename(logcommand.LogCommand):
     summary = "rename image and all files based on metadata"
 
     def addOptions(self):
+        rcommon.addTemplate(self)
         self.parser.add_option('-R', '--release-id',
             action="store", dest="release_id",
             help="MusicBrainz release id to match to (if there are multiple)")
@@ -161,6 +164,9 @@ class Rename(logcommand.LogCommand):
         prog = program.Program(stdout=self.stdout)
         runner = task.SyncRunner()
 
+        # FIXME: doing this to get rid of traceback, but figure it out better
+        prog.outdir = u''
+
         for arg in args:
             self.stdout.write('Renaming image %r\n' % arg)
             arg = arg.decode('utf-8')
@@ -169,7 +175,8 @@ class Rename(logcommand.LogCommand):
 
             mbdiscid = cueImage.table.getMusicBrainzDiscId()
 
-            operator = renamer.Operator(statePath, mbdiscid)
+            operator = renamer.Operator(directory.Directory().getCache(),
+                mbdiscid)
 
             self.stdout.write('MusicBrainz disc id is %s\n' % mbdiscid)
             prog.metadata = prog.getMusicBrainz(cueImage.table, mbdiscid,
@@ -184,19 +191,15 @@ class Rename(logcommand.LogCommand):
             prog.result = result.RipResult()
             for track in cueImage.table.tracks:
                 path = cueImage.getRealPath(track.indexes[1].path)
+                print 'THOMAS: source path', path
+                extension = os.path.splitext(path)[1]
 
-                taglist = prog.getTagList(track.number)
-                self.debug(
-                    'possibly retagging %r from cue path %r with taglist %r',
-                    path, arg, taglist)
-                t = encode.SafeRetagTask(path, taglist)
-                runner.run(t)
-                path = os.path.basename(path)
-                if t.changed:
-                    print 'Retagged %s' % path
-                else:
-                    print '%s already tagged correctly' % path
-            print
+                profile = encode.Profile()
+                profile.extension = extension
+                newPath = prog.getPath(prog.outdir, self.options.track_template,
+                    mbdiscid, track.number, profile=profile) + '.' + profile.extension
+
+                print 'THOMAS: new path', newPath
 
 class Verify(logcommand.LogCommand):
 
@@ -238,4 +241,4 @@ Disc images can be encoded to another format (for example, to make a
 compressed encoding), retagged and verified.
 """
 
-    subCommandClasses = [Encode, Retag, Verify, ]
+    subCommandClasses = [Encode, Rename, Retag, Verify, ]
