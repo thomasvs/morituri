@@ -318,3 +318,16 @@ class TOTBLTestCase(common.TestCase):
     def testCDDBId(self):
         self.toc.table.absolutize()
         self.assertEquals(self.toc.table.getCDDBDiscId(), '810b7b0b')
+
+class GentlemenTestCase(common.TestCase):
+
+    def setUp(self):
+        self.path = os.path.join(os.path.dirname(__file__),
+            u'gentlemen.fast.toc')
+        self.toc = toc.TocFile(self.path)
+        self.toc.parse()
+        self.assertEquals(len(self.toc.table.tracks), 11)
+
+    def testCDDBId(self):
+        self.toc.table.absolutize()
+        self.assertEquals(self.toc.table.getCDDBDiscId(), '810b7b0b')
